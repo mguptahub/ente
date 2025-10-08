@@ -112,7 +112,7 @@ Ente offers **10 GB of storage for free, forever**. The free plan includes:
 
 Paid plans unlock additional features and storage:
 
-- Multiple storage tiers from 50 GB to multiple TBs
+- Multiple storage tiers from 125 GB to multiple TBs
 - Monthly and annual billing (annual plans offer better value)
 - Ability to share albums and create public links
 - Family plan capability to share storage with 5 family members

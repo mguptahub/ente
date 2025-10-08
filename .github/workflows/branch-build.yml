@@ -1,0 +1,129 @@
+name: Branch Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: 'Build type (e.g., build, release)'
+        required: true
+        type: choice
+        options:
+          - build
+          - release
+        default: 'build'
+      version:
+        description: 'Release version (e.g., 1.2.3)'
+        required: false
+        type: string
+      prerelease:
+        description: 'Is this a prerelease?'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  BUILD_TYPE: ${{ inputs.build_type }}
+  REGISTRY: ghcr.io
+  RELEASE_VERSION: ${{ inputs.version }}
+  IS_PRERELEASE: ${{ inputs.prerelease }}
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    if: ${{ inputs.build_type == 'release' }}
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Validate version
+        run: |
+          if [[ ! "${{ env.RELEASE_VERSION }}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Version must be in the format x.y.z"
+            exit 1
+          fi
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set version output
+        id: version
+        run: echo "version=${{ env.RELEASE_VERSION }}" >> $GITHUB_OUTPUT
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.RELEASE_VERSION }}
+          prerelease: ${{ env.IS_PRERELEASE }}
+          files: |
+            .github/assets/local/compose.yaml
+            .github/assets/local/museum.yaml
+
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    strategy:
+      matrix:
+        include:
+          - image: ${{ github.repository }}/server
+            context: ./server
+            platform: linux/amd64
+          - image: ${{ github.repository }}/web
+            context: ./web
+            platform: linux/amd64
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Pull latest changes (for release builds)
+        if: inputs.build_type == 'release'
+        run: git pull origin ${{ github.ref_name }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create Tags
+        id: create_tags
+        run: |
+          TAGS=""
+          if [[ "${{ env.BUILD_TYPE }}" == "build" ]]; then
+            TAGS="${{ env.REGISTRY }}/${{ matrix.image }}:${{ github.ref_name }}"
+          else
+            VERSION="${{ env.RELEASE_VERSION }}"
+            IFS='.' read -ra VERSION_PARTS <<< "$VERSION"
+            MAJOR="${VERSION_PARTS[0]}"
+            MINOR="${VERSION_PARTS[1]}"
+            PATCH="${VERSION_PARTS[2]}"
+
+            TAGS="${{ env.REGISTRY }}/${{ matrix.image }}:v$VERSION"
+            TAGS="$TAGS,${{ env.REGISTRY }}/${{ matrix.image }}:v$MAJOR.$MINOR"
+            TAGS="$TAGS,${{ env.REGISTRY }}/${{ matrix.image }}:v$MAJOR"
+
+            if [[ "${{ env.IS_PRERELEASE }}" != "true" ]]; then
+              TAGS="$TAGS,${{ env.REGISTRY }}/${{ matrix.image }}:latest"
+            fi
+          fi
+          
+          echo "tags=$TAGS" >> $GITHUB_OUTPUT
+          echo "Generated tags: $TAGS"
+
+      - name: Build and push Server Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ matrix.context }}
+          platforms: ${{ matrix.platform }}
+          push: true
+          tags: ${{ steps.create_tags.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

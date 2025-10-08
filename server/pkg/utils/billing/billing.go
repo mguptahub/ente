@@ -3,6 +3,7 @@ package billing
 import (
 	"encoding/json"
 	"os"
+	"strconv"
 
 	"github.com/ente-io/museum/ente"
 	"github.com/ente-io/museum/pkg/utils/config"
@@ -103,18 +104,37 @@ func parsePricingFile(fileName string) ente.BillingPlansPerCountry {
 
 // GetFreeSubscription return a free subscription for a new signed up user
 func GetFreeSubscription(userID int64) ente.Subscription {
+	freePlanStorageInt := ente.FreePlanStorage
+
+	// read env for free plan storage and check the value is a valid int64
+	freePlanStorage := os.Getenv("FREE_PLAN_STORAGE")
+	if freePlanStorage != "" {
+		val, err := strconv.ParseInt(freePlanStorage, 10, 64)
+		if err == nil {
+			freePlanStorageInt = val * 1024 * 1024 * 1024
+		}
+	}
 	return ente.Subscription{
 		UserID:                userID,
 		ProductID:             ente.FreePlanProductID,
 		OriginalTransactionID: ente.FreePlanTransactionID,
-		Storage:               ente.FreePlanStorage,
+		Storage:               freePlanStorageInt,
 		ExpiryTime:            time.NYearsFromNow(ente.TrialPeriodDuration),
 	}
 }
 
 func GetFreePlan() ente.FreePlan {
+	freePlanStorageInt := ente.FreePlanStorage
+
+	freePlanStorage := os.Getenv("FREE_PLAN_STORAGE")
+	if freePlanStorage != "" {
+		val, err := strconv.ParseInt(freePlanStorage, 10, 64)
+		if err == nil {
+			freePlanStorageInt = val * 1024 * 1024 * 1024
+		}
+	}
 	return ente.FreePlan{
-		Storage:  ente.FreePlanStorage,
+		Storage:  freePlanStorageInt,
 		Period:   ente.PeriodYear,
 		Duration: ente.TrialPeriodDuration,
 	}
@@ -122,11 +142,11 @@ func GetFreePlan() ente.FreePlan {
 
 func GetActivePlanIDs() []string {
 	return []string{
-		"50gb_monthly_v4",
+		"125gb_monthly_v4",
 		"200gb_monthly_v4",
 		"1000gb_monthly_v4",
 		"2000gb_monthly_v4",
-		"50gb_yearly_v4",
+		"125gb_yearly_v4",
 		"200gb_yearly_v4",
 		"1000gb_yearly_v4",
 		"2000gb_yearly_v4",

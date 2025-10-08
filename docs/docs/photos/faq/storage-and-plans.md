@@ -89,8 +89,8 @@ See our [website](https://ente.io#pricing) for the complete list of supported pl
 
 We offer:
 
-- **Free plan**: 10 GB storage
-- **Paid plans**: Multiple tiers ranging from 50 GB to multiple TBs
+- **Free plan**: 40 GB storage
+- **Paid plans**: Multiple tiers ranging from 125 GB to multiple TBs
 - **Monthly and annual billing**: Annual plans offer better value
 - **Family plans**: Share your storage with up to 5 family members
 

@@ -10,8 +10,9 @@ import (
 )
 
 const (
+	FreePlanStorageGB int64 = 75
 	// FreePlanStorage is the amount of storage in free plan
-	FreePlanStorage int64 = 10 * 1024 * 1024 * 1024
+	FreePlanStorage int64 = FreePlanStorageGB * 1024 * 1024 * 1024
 	// FreePlanProductID is the product ID of free plan
 	FreePlanProductID = "free"
 	// FreePlanTransactionID is the dummy transaction ID for the free plan
